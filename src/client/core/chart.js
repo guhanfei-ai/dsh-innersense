@@ -1,15 +1,42 @@
 // Generated source fragment. Edit this file, then run npm run build:client.
 				//#region MEL × RRI 纯 SVG 图表 — observability-grade time series
-				const CHART_PAD = { top: 12, right: 12, bottom: 26, left: 32 };
-				const CHART_DEFAULTS = { width: 300, height: 160 };
-				const MEL_COLOR = "var(--dsw-alias-state-business-primary, #818cf8)";
-				const RRI_COLOR = "var(--dsw-alias-state-success-primary, #34d399)";
-				const GAP_FILL = "var(--dsw-alias-state-business-primary, #818cf8)";
+				const CHART_PAD = { top: 26, right: 14, bottom: 30, left: 34 };
+				const CHART_DEFAULTS = { width: 300, height: 176 };
+				const MEL_COLOR = "var(--dsw-alias-state-business-primary, #8b93f7)";
+				const RRI_COLOR = "var(--dsw-alias-state-success-primary, #37d39a)";
+				const GAP_FILL = "var(--dsw-alias-state-business-primary, #8b93f7)";
 				const TICK_COLOR = "var(--dsw-alias-label-caption, #6b7280)";
 				const GRID_COLOR = "var(--dsw-alias-border-l2, rgba(255,255,255,0.06))";
+				const GRID_V_COLOR = "var(--dsw-alias-border-l2, rgba(255,255,255,0.04))";
 				const CROSSHAIR_COLOR = "var(--dsw-alias-label-caption, #6b7280)";
 				const MEL_MAX = 200;
 				const RRI_MAX = 100;
+
+				/**
+				 * 随窗口长度变化的视觉密度：时间越长，图越「缩进去、更远观」。
+				 * - topPad：数据顶部留白比例（观察呼吸空间，核心诉求）
+				 * - botPad：0 基准线下方少量留白
+				 * - strokeWidth / glowWidth：线条与柔光宽度（越久越细越轻）
+				 * - endpoint* / hoverR：端点与 hover 点大小
+				 * - areaOpacity / grid*Opacity：填色与网格淡度
+				 */
+				function chartParams(hours) {
+					const long = hours >= 24;
+					const veryLong = hours >= 48;
+					return {
+						topPad: veryLong ? 0.20 : long ? 0.16 : 0.12,
+						botPad: 0.05,
+						strokeWidth: veryLong ? 1.0 : long ? 1.15 : 1.3,
+						glowWidth: veryLong ? 2.4 : long ? 2.8 : 3.2,
+						glowOpacity: 0.10,
+						endpointOuter: veryLong ? 2.3 : 3.0,
+						endpointInner: veryLong ? 1.2 : 1.7,
+						hoverR: veryLong ? 2.0 : 2.4,
+						areaOpacity: 0.05,
+						gridHOpacity: 0.05,
+						gridVOpacity: 0.03,
+					};
+				}
 
 				function plotArea(width, height) {
 					const left = CHART_PAD.left;
@@ -19,9 +46,18 @@
 					return { left, top, w, h };
 				}
 
-				function scaleY(value100, area) {
+				/**
+				 * 0-100 归一值 → y 像素。domain 上下各留 headroom：
+				 * value=100 落在 area.top + topPad·h（不贴顶，留出呼吸空间），
+				 * value=0   落在 area.bottom - botPad·h（不贴底）。
+				 * 不伪造数据——仅重排 vertical composition。
+				 */
+				function scaleY(value100, area, topPad, botPad) {
 					if (value100 == null || !Number.isFinite(value100)) return null;
-					return area.top + area.h - Math.max(0, Math.min(100, value100)) * area.h / 100;
+					const v = Math.max(0, Math.min(100, value100));
+					const usable = area.h * (1 - topPad - botPad);
+					const top = area.top + area.h * topPad;
+					return top + ((100 - v) / 100) * usable;
 				}
 
 				/** 时间 → x 坐标：按真实 timestamp 在 window 中的比例定位。 */
@@ -44,7 +80,59 @@
 					return d;
 				}
 
-				function buildGapSegment(coords, from, to) {
+				/**
+				 * 单调三次样条（Fritsch–Carlson）：在不 overshoot、不伪造趋势的前提下
+				 * 把折线变成顺滑曲线。每个控制点由局部斜率推导，局部极值处压平，
+				 * 因此数据语义不变，只是视觉更丝滑、更连续。
+				 */
+				function smoothPath(points) {
+					const pts = points.filter(function (p) { return p != null && p.y != null; });
+					if (pts.length === 0) return "";
+					if (pts.length === 1) return "M" + pts[0].x.toFixed(1) + " " + pts[0].y.toFixed(1);
+					const n = pts.length;
+					const dx = new Array(n - 1);
+					const dy = new Array(n - 1);
+					const slope = new Array(n - 1);
+					for (let i = 0; i < n - 1; i++) {
+						dx[i] = pts[i + 1].x - pts[i].x;
+						dy[i] = pts[i + 1].y - pts[i].y;
+						slope[i] = dx[i] === 0 ? 0 : dy[i] / dx[i];
+					}
+					const m = new Array(n);
+					m[0] = slope[0];
+					m[n - 1] = slope[n - 1];
+					for (let i = 1; i < n - 1; i++) {
+						if ((slope[i - 1] > 0 && slope[i] < 0) || (slope[i - 1] < 0 && slope[i] > 0)) {
+							m[i] = 0; // 出现方向反转 → 局部极值，压平避免 overshoot
+						} else {
+							m[i] = (slope[i - 1] + slope[i]) / 2;
+						}
+					}
+					// Fritsch–Carlson 收敛约束：限制控制斜率，杜绝过冲失真
+					for (let i = 0; i < n - 1; i++) {
+						if (slope[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+						const a = m[i] / slope[i];
+						const b = m[i + 1] / slope[i];
+						const s = a * a + b * b;
+						if (s > 9) {
+							const t = 3 / Math.sqrt(s);
+							m[i] = t * a * slope[i];
+							m[i + 1] = t * b * slope[i];
+						}
+					}
+					let d = "M" + pts[0].x.toFixed(1) + " " + pts[0].y.toFixed(1);
+					for (let i = 0; i < n - 1; i++) {
+						const h = dx[i];
+						const c1x = pts[i].x + h / 3;
+						const c1y = pts[i].y + (m[i] * h) / 3;
+						const c2x = pts[i + 1].x - h / 3;
+						const c2y = pts[i + 1].y - (m[i + 1] * h) / 3;
+						d += "C" + c1x.toFixed(1) + " " + c1y.toFixed(1) + " " + c2x.toFixed(1) + " " + c2y.toFixed(1) + " " + pts[i + 1].x.toFixed(1) + " " + pts[i + 1].y.toFixed(1);
+					}
+					return d;
+				}
+
+				function buildGapSegment(coords, from, to, params) {
 					const upper = [];
 					const lower = [];
 					for (let i = from; i < to; i++) {
@@ -53,10 +141,10 @@
 						lower.push({ x: coords[i].x, y: coords[i].rriY });
 					}
 					if (upper.length < 2) return "";
-					let d = `M${upper[0].x.toFixed(1)} ${upper[0].y.toFixed(1)}`;
-					for (let i = 1; i < upper.length; i++) d += `L${upper[i].x.toFixed(1)} ${upper[i].y.toFixed(1)}`;
-					for (let i = lower.length - 1; i >= 0; i--) d += `L${lower[i].x.toFixed(1)} ${lower[i].y.toFixed(1)}`;
-					return d + "Z";
+					const upperD = smoothPath(upper);
+					const lowerRev = lower.slice().reverse();
+					const lowerD = smoothPath(lowerRev).replace(/^M/, "L");
+					return upperD + " " + lowerD + " Z";
 				}
 
 				function lastNonNull(series, key) {
@@ -98,7 +186,7 @@
 					return d.getTime();
 				}
 
-				/** 每个 range 的建议 tick 间隔（分钟）。 */
+				/** 每个 range 的建议 tick 间隔（分钟）。越长越稀疏 → overview 感。 */
 				const TICK_INTERVALS = {
 					1: 15,
 					3: 30,
@@ -132,7 +220,7 @@
 						while (t <= endMs) {
 							const h = new Date(t).getHours();
 							if (stepHours <= 1 || h % stepHours === 0) {
-								result.push({ ms: t, label: needDate ? fmtMMdd(t) + " " + fmtHHmm(t) : fmtHHmm(t) });
+								result.push({ ms: t });
 							}
 							t += 3600000;
 						}
@@ -140,20 +228,34 @@
 						t = snapMinute(startMs, intervalMin);
 						if (t < startMs) t += intervalMs;
 						while (t <= endMs) {
-							result.push({ ms: t, label: fmtHHmm(t) });
+							result.push({ ms: t });
 							t += intervalMs;
 						}
 					}
 					// 首尾保底：确保第一个和最后一个 tick 存在
 					if (result.length === 0) {
-						result.push({ ms: startMs, label: needDate ? fmtMMdd(startMs) + " " + fmtHHmm(startMs) : fmtHHmm(startMs) });
-						result.push({ ms: endMs, label: needDate ? fmtMMdd(endMs) + " " + fmtHHmm(endMs) : fmtHHmm(endMs) });
+						result.push({ ms: startMs });
+						result.push({ ms: endMs });
 					} else {
 						if (result[0].ms > startMs + (endMs - startMs) * 0.2) {
-							result.unshift({ ms: startMs, label: needDate ? fmtMMdd(startMs) + " " + fmtHHmm(startMs) : fmtHHmm(startMs) });
+							result.unshift({ ms: startMs });
 						}
 						if (result[result.length - 1].ms < endMs - (endMs - startMs) * 0.2) {
-							result.push({ ms: endMs, label: needDate ? fmtMMdd(endMs) + " " + fmtHHmm(endMs) : fmtHHmm(endMs) });
+							result.push({ ms: endMs });
+						}
+					}
+					// 刻度文字保持克制：默认只写 HH:mm；跨日/长窗口时仅在首刻度和
+					// 自然午夜锚定日期，其余用短标签——长窗口下不会互相拥挤。
+					for (let i = 0; i < result.length; i++) {
+						const ms = result[i].ms;
+						if (!needDate) {
+							result[i].label = fmtHHmm(ms);
+							continue;
+						}
+						if (new Date(ms).getHours() === 0) {
+							result[i].label = fmtMMdd(ms);
+						} else {
+							result[i].label = i === 0 ? fmtMMdd(ms) + " " + fmtHHmm(ms) : fmtHHmm(ms);
 						}
 					}
 					return result;
@@ -162,7 +264,7 @@
 
 				/**
 				 * 纯函数：从时间序列 + 固定时间窗口算出 SVG 几何。
-				 * 现在 x 轴由 windowStart→windowEnd 决定，点按真实 timestamp 定位。
+				 * x 轴由 windowStart→windowEnd 决定，点按真实 timestamp 定位。
 				 *
 				 * @param {Array} series - 时间序列数据
 				 * @param {number} width
@@ -176,25 +278,26 @@
 					const startMs = timeWindow && Number.isFinite(timeWindow.startMs) ? timeWindow.startMs : 0;
 					const endMs = timeWindow && Number.isFinite(timeWindow.endMs) ? timeWindow.endMs : 1;
 					const hours = timeWindow && Number.isFinite(timeWindow.hours) ? timeWindow.hours : 1;
+					const params = chartParams(hours);
 					// X 轴刻度：基于 window，不依赖数据
 					const rawTicks = generateWindowTicks({ startMs, endMs, hours });
 					const xTicks = rawTicks.map(function (tick) {
 						return { ms: tick.ms, label: tick.label, x: scaleTimeX(tick.ms, startMs, endMs, area).toFixed(1) };
 					});
-					// Y 轴网格
+					// Y 轴网格（随 padded domain 一并下移）
 					const yGrid = [0, 50, 100].map(function (v) {
-						return { value: v, y: scaleY(v, area).toFixed(1), label: String(v) };
+						return { value: v, y: scaleY(v, area, params.topPad, params.botPad).toFixed(1), label: String(v) };
 					});
 					if (!Array.isArray(series) || series.length === 0) {
-						return { viewBox: `0 0 ${w} ${h}`, width: w, height: h, empty: true, mel: null, rri: null, gap: null, xTicks: xTicks, yGrid: yGrid, current: [], hoverData: [] };
+						return { viewBox: `0 0 ${w} ${h}`, width: w, height: h, empty: true, mel: null, rri: null, gap: null, xTicks: xTicks, yGrid: yGrid, current: [], hoverData: [], style: params };
 					}
 					// 按真实 timestamp 定位每个点
 					const coords = series.map(function (point) {
 						const ms = timeMs(point.time);
 						return {
 							x: scaleTimeX(ms, startMs, endMs, area),
-							melY: scaleY(normalizeTo100(point.mel != null ? point.mel / 2 : null, MEL_MAX / 2), area),
-							rriY: scaleY(normalizeTo100(point.rri, RRI_MAX), area),
+							melY: scaleY(normalizeTo100(point.mel != null ? point.mel / 2 : null, MEL_MAX / 2), area, params.topPad, params.botPad),
+							rriY: scaleY(normalizeTo100(point.rri, RRI_MAX), area, params.topPad, params.botPad),
 							mel: point.mel,
 							rri: point.rri,
 							time: point.time,
@@ -202,9 +305,10 @@
 							summary: point.summary ?? "",
 						};
 					});
-					const melPath = polylinePath(coords.map(function (c) { return { x: c.x, y: c.melY }; }));
-					const rriPath = polylinePath(coords.map(function (c) { return { x: c.x, y: c.rriY }; }));
-					// Gap area: normalized MEL/2 vs RRI
+					// 顺滑曲线（单调三次样条，不 overshoot）
+					const melPath = smoothPath(coords.map(function (c) { return { x: c.x, y: c.melY }; }));
+					const rriPath = smoothPath(coords.map(function (c) { return { x: c.x, y: c.rriY }; }));
+					// Gap area: normalized MEL/2 vs RRI（同样顺滑闭合）
 					var gapPath = "";
 					if (coords.length >= 2) {
 						var lastBothKnown = false;
@@ -213,12 +317,12 @@
 							var both = coords[i].melY != null && coords[i].rriY != null;
 							if (both && !lastBothKnown) segStart = i;
 							if (!both && lastBothKnown && segStart >= 0) {
-								gapPath += buildGapSegment(coords, segStart, i);
+								gapPath += buildGapSegment(coords, segStart, i, params);
 								segStart = -1;
 							}
 							lastBothKnown = both;
 						}
-						if (lastBothKnown && segStart >= 0) gapPath += buildGapSegment(coords, segStart, coords.length);
+						if (lastBothKnown && segStart >= 0) gapPath += buildGapSegment(coords, segStart, coords.length, params);
 					}
 					// 当前值端点（最后一个非空值）
 					var melLast = lastNonNull(series, "mel");
@@ -229,7 +333,7 @@
 						current.push({
 							label: "MEL", value: melLast.value,
 							normalized: Math.round(melLast.value / 2),
-							x: scaleTimeX(melMs, startMs, endMs, area), y: scaleY(normalizeTo100(melLast.value / 2, MEL_MAX / 2), area),
+							x: scaleTimeX(melMs, startMs, endMs, area), y: scaleY(normalizeTo100(melLast.value / 2, MEL_MAX / 2), area, params.topPad, params.botPad),
 							color: MEL_COLOR,
 						});
 					}
@@ -238,7 +342,7 @@
 						current.push({
 							label: "RRI", value: rriLast.value,
 							normalized: rriLast.value,
-							x: scaleTimeX(rriMs, startMs, endMs, area), y: scaleY(normalizeTo100(rriLast.value, RRI_MAX), area),
+							x: scaleTimeX(rriMs, startMs, endMs, area), y: scaleY(normalizeTo100(rriLast.value, RRI_MAX), area, params.topPad, params.botPad),
 							color: RRI_COLOR,
 						});
 					}
@@ -270,6 +374,7 @@
 						yGrid: yGrid,
 						current: current,
 						hoverData: hoverData,
+						style: params,
 					};
 				}
 

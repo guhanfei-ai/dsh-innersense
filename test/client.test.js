@@ -175,7 +175,7 @@ test('buildChartPaths treats nulls as gaps, not as zeros', () => {
   const chart = buildChartPaths(series, 200, 80, tw)
   assert.equal(chart.gap, null, '中间有 null 的段不应生成填色区域')
   assert.ok(chart.mel.path.includes('M'))
-  assert.ok(chart.rri.path.includes('L'))
+  assert.ok(/[CL]/.test(chart.rri.path), 'rri 线应有折线段（L）或顺滑曲线段（C）')
 })
 
 test('resultTextOfBlocks joins only text blocks', () => {

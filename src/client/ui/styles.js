@@ -35,15 +35,18 @@
 					secondaryHint: { fontSize: "9px", color: "var(--dsw-alias-label-caption)" },
 
 					// ── Chart Section ──
-					chartWrap: { padding: "12px 16px", borderBottom: "1px solid var(--dsw-alias-border-l2)", flex: "none", position: "relative" },
-					chartHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", fontSize: "11px", color: "var(--dsw-alias-label-tertiary)" },
-					chartRange: { fontSize: "10px", color: "var(--dsw-alias-label-caption)", letterSpacing: "0.02em" },
-					chartLegend: { display: "flex", gap: "12px", fontSize: "11px" },
-					legendItem: { display: "inline-flex", alignItems: "center", gap: "5px" },
-					legendDot: { width: "7px", height: "7px", borderRadius: "50%", flex: "none" },
-					legendLabel: { color: "var(--dsw-alias-label-tertiary)", fontSize: "10px", letterSpacing: "0.02em" },
-					legendValue: { color: "var(--dsw-alias-label-secondary)", fontVariantNumeric: "tabular-nums", fontWeight: 500, fontSize: "11px" },
-					chartSvg: { display: "block", width: "100%", height: "auto", cursor: "crosshair" },
+					chartWrap: { padding: "14px 16px 16px", borderBottom: "1px solid var(--dsw-alias-border-l2)", flex: "none", position: "relative" },
+					chartHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", fontSize: "11px", color: "var(--dsw-alias-label-tertiary)" },
+					chartEyebrow: { fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--dsw-alias-label-caption)", opacity: 0.85, display: "block", marginBottom: "3px" },
+					chartRange: { fontSize: "10px", color: "var(--dsw-alias-label-caption)", letterSpacing: "0.03em", fontVariantNumeric: "tabular-nums" },
+					// 内层观察卡片：图表本身的 surface，与周围区块有克制但明确的层次差
+					chartCard: { background: "var(--dsw-alias-fill-tsp-secondary, rgba(255,255,255,0.018))", borderRadius: "10px", border: "1px solid var(--dsw-alias-border-l2)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)", padding: "16px 14px 12px", position: "relative" },
+					chartLegend: { display: "flex", gap: "14px", fontSize: "11px" },
+					legendItem: { display: "inline-flex", alignItems: "center", gap: "6px" },
+					legendDot: { width: "5px", height: "5px", borderRadius: "50%", flex: "none" },
+					legendLabel: { color: "var(--dsw-alias-label-caption)", fontSize: "9.5px", letterSpacing: "0.04em" },
+					legendValue: { color: "var(--dsw-alias-label-secondary)", fontVariantNumeric: "tabular-nums", fontWeight: 500, fontSize: "10.5px" },
+					chartSvg: { display: "block", width: "100%", height: "auto", cursor: "crosshair", overflow: "visible" },
 					chartEmpty: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "4px", padding: "24px 16px", textAlign: "center" },
 					chartEmptyText: { fontSize: "11px", color: "var(--dsw-alias-label-caption)" },
 
@@ -57,12 +60,12 @@
 					rangeOptionHover: { background: "var(--dsw-alias-interactive-bg-hover)" },
 
 					// ── Tooltip (floating, positioned by JS) ──
-					tooltip: { position: "absolute", pointerEvents: "none", background: "var(--dsw-alias-bg-elevated, rgba(20,20,28,0.95))", border: "1px solid var(--dsw-alias-border-l2)", borderRadius: "6px", padding: "8px 10px", fontSize: "10px", lineHeight: 1.5, zIndex: 10, minWidth: "120px", boxShadow: "0 4px 12px rgba(0,0,0,0.3)", fontVariantNumeric: "tabular-nums", transition: "opacity 0.1s ease" },
-					tooltipTime: { fontSize: "11px", fontWeight: 600, color: "var(--dsw-alias-label-primary)", marginBottom: "4px", letterSpacing: "0.01em" },
-					tooltipRow: { display: "flex", justifyContent: "space-between", gap: "12px", color: "var(--dsw-alias-label-secondary)" },
-					tooltipLabel: { color: "var(--dsw-alias-label-tertiary)" },
-					tooltipVal: { fontWeight: 500 },
-					tooltipDivider: { height: "1px", background: "var(--dsw-alias-border-l2)", margin: "4px 0" },
+					tooltip: { position: "absolute", pointerEvents: "none", background: "color-mix(in srgb, var(--dsw-alias-bg-elevated, rgba(20,20,28,0.96)) 88%, transparent)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", border: "1px solid var(--dsw-alias-border-l2)", borderRadius: "7px", padding: "7px 9px", fontSize: "10px", lineHeight: 1.5, zIndex: 10, minWidth: "118px", boxShadow: "0 6px 18px rgba(0,0,0,0.34)", fontVariantNumeric: "tabular-nums", transition: "opacity 0.1s ease" },
+					tooltipTime: { fontSize: "11px", fontWeight: 600, color: "var(--dsw-alias-label-primary)", marginBottom: "5px", letterSpacing: "0.01em", fontVariantNumeric: "tabular-nums" },
+					tooltipRow: { display: "flex", justifyContent: "space-between", gap: "14px", color: "var(--dsw-alias-label-secondary)" },
+					tooltipLabel: { color: "var(--dsw-alias-label-caption)" },
+					tooltipVal: { fontWeight: 500, color: "var(--dsw-alias-label-primary)" },
+					tooltipDivider: { height: "1px", background: "var(--dsw-alias-border-l2)", margin: "5px 0" },
 
 					// ── Today Strip ──
 					todayStrip: { padding: "8px 16px", borderBottom: "1px solid var(--dsw-alias-border-l2)", flex: "none", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "11px" },

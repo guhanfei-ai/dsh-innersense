@@ -179,16 +179,43 @@ window.__ModuleLoader__.load({
 			//#endregion
 
 				//#region MEL × RRI 纯 SVG 图表 — observability-grade time series
-				const CHART_PAD = { top: 12, right: 12, bottom: 26, left: 32 };
-				const CHART_DEFAULTS = { width: 300, height: 160 };
-				const MEL_COLOR = "var(--dsw-alias-state-business-primary, #818cf8)";
-				const RRI_COLOR = "var(--dsw-alias-state-success-primary, #34d399)";
-				const GAP_FILL = "var(--dsw-alias-state-business-primary, #818cf8)";
+				const CHART_PAD = { top: 26, right: 14, bottom: 30, left: 34 };
+				const CHART_DEFAULTS = { width: 300, height: 176 };
+				const MEL_COLOR = "var(--dsw-alias-state-business-primary, #8b93f7)";
+				const RRI_COLOR = "var(--dsw-alias-state-success-primary, #37d39a)";
+				const GAP_FILL = "var(--dsw-alias-state-business-primary, #8b93f7)";
 				const TICK_COLOR = "var(--dsw-alias-label-caption, #6b7280)";
 				const GRID_COLOR = "var(--dsw-alias-border-l2, rgba(255,255,255,0.06))";
+				const GRID_V_COLOR = "var(--dsw-alias-border-l2, rgba(255,255,255,0.04))";
 				const CROSSHAIR_COLOR = "var(--dsw-alias-label-caption, #6b7280)";
 				const MEL_MAX = 200;
 				const RRI_MAX = 100;
+
+				/**
+				 * 随窗口长度变化的视觉密度：时间越长，图越「缩进去、更远观」。
+				 * - topPad：数据顶部留白比例（观察呼吸空间，核心诉求）
+				 * - botPad：0 基准线下方少量留白
+				 * - strokeWidth / glowWidth：线条与柔光宽度（越久越细越轻）
+				 * - endpoint* / hoverR：端点与 hover 点大小
+				 * - areaOpacity / grid*Opacity：填色与网格淡度
+				 */
+				function chartParams(hours) {
+					const long = hours >= 24;
+					const veryLong = hours >= 48;
+					return {
+						topPad: veryLong ? 0.20 : long ? 0.16 : 0.12,
+						botPad: 0.05,
+						strokeWidth: veryLong ? 1.0 : long ? 1.15 : 1.3,
+						glowWidth: veryLong ? 2.4 : long ? 2.8 : 3.2,
+						glowOpacity: 0.10,
+						endpointOuter: veryLong ? 2.3 : 3.0,
+						endpointInner: veryLong ? 1.2 : 1.7,
+						hoverR: veryLong ? 2.0 : 2.4,
+						areaOpacity: 0.05,
+						gridHOpacity: 0.05,
+						gridVOpacity: 0.03,
+					};
+				}
 
 				function plotArea(width, height) {
 					const left = CHART_PAD.left;
@@ -198,9 +225,18 @@ window.__ModuleLoader__.load({
 					return { left, top, w, h };
 				}
 
-				function scaleY(value100, area) {
+				/**
+				 * 0-100 归一值 → y 像素。domain 上下各留 headroom：
+				 * value=100 落在 area.top + topPad·h（不贴顶，留出呼吸空间），
+				 * value=0   落在 area.bottom - botPad·h（不贴底）。
+				 * 不伪造数据——仅重排 vertical composition。
+				 */
+				function scaleY(value100, area, topPad, botPad) {
 					if (value100 == null || !Number.isFinite(value100)) return null;
-					return area.top + area.h - Math.max(0, Math.min(100, value100)) * area.h / 100;
+					const v = Math.max(0, Math.min(100, value100));
+					const usable = area.h * (1 - topPad - botPad);
+					const top = area.top + area.h * topPad;
+					return top + ((100 - v) / 100) * usable;
 				}
 
 				/** 时间 → x 坐标：按真实 timestamp 在 window 中的比例定位。 */
@@ -223,7 +259,59 @@ window.__ModuleLoader__.load({
 					return d;
 				}
 
-				function buildGapSegment(coords, from, to) {
+				/**
+				 * 单调三次样条（Fritsch–Carlson）：在不 overshoot、不伪造趋势的前提下
+				 * 把折线变成顺滑曲线。每个控制点由局部斜率推导，局部极值处压平，
+				 * 因此数据语义不变，只是视觉更丝滑、更连续。
+				 */
+				function smoothPath(points) {
+					const pts = points.filter(function (p) { return p != null && p.y != null; });
+					if (pts.length === 0) return "";
+					if (pts.length === 1) return "M" + pts[0].x.toFixed(1) + " " + pts[0].y.toFixed(1);
+					const n = pts.length;
+					const dx = new Array(n - 1);
+					const dy = new Array(n - 1);
+					const slope = new Array(n - 1);
+					for (let i = 0; i < n - 1; i++) {
+						dx[i] = pts[i + 1].x - pts[i].x;
+						dy[i] = pts[i + 1].y - pts[i].y;
+						slope[i] = dx[i] === 0 ? 0 : dy[i] / dx[i];
+					}
+					const m = new Array(n);
+					m[0] = slope[0];
+					m[n - 1] = slope[n - 1];
+					for (let i = 1; i < n - 1; i++) {
+						if ((slope[i - 1] > 0 && slope[i] < 0) || (slope[i - 1] < 0 && slope[i] > 0)) {
+							m[i] = 0; // 出现方向反转 → 局部极值，压平避免 overshoot
+						} else {
+							m[i] = (slope[i - 1] + slope[i]) / 2;
+						}
+					}
+					// Fritsch–Carlson 收敛约束：限制控制斜率，杜绝过冲失真
+					for (let i = 0; i < n - 1; i++) {
+						if (slope[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+						const a = m[i] / slope[i];
+						const b = m[i + 1] / slope[i];
+						const s = a * a + b * b;
+						if (s > 9) {
+							const t = 3 / Math.sqrt(s);
+							m[i] = t * a * slope[i];
+							m[i + 1] = t * b * slope[i];
+						}
+					}
+					let d = "M" + pts[0].x.toFixed(1) + " " + pts[0].y.toFixed(1);
+					for (let i = 0; i < n - 1; i++) {
+						const h = dx[i];
+						const c1x = pts[i].x + h / 3;
+						const c1y = pts[i].y + (m[i] * h) / 3;
+						const c2x = pts[i + 1].x - h / 3;
+						const c2y = pts[i + 1].y - (m[i + 1] * h) / 3;
+						d += "C" + c1x.toFixed(1) + " " + c1y.toFixed(1) + " " + c2x.toFixed(1) + " " + c2y.toFixed(1) + " " + pts[i + 1].x.toFixed(1) + " " + pts[i + 1].y.toFixed(1);
+					}
+					return d;
+				}
+
+				function buildGapSegment(coords, from, to, params) {
 					const upper = [];
 					const lower = [];
 					for (let i = from; i < to; i++) {
@@ -232,10 +320,10 @@ window.__ModuleLoader__.load({
 						lower.push({ x: coords[i].x, y: coords[i].rriY });
 					}
 					if (upper.length < 2) return "";
-					let d = `M${upper[0].x.toFixed(1)} ${upper[0].y.toFixed(1)}`;
-					for (let i = 1; i < upper.length; i++) d += `L${upper[i].x.toFixed(1)} ${upper[i].y.toFixed(1)}`;
-					for (let i = lower.length - 1; i >= 0; i--) d += `L${lower[i].x.toFixed(1)} ${lower[i].y.toFixed(1)}`;
-					return d + "Z";
+					const upperD = smoothPath(upper);
+					const lowerRev = lower.slice().reverse();
+					const lowerD = smoothPath(lowerRev).replace(/^M/, "L");
+					return upperD + " " + lowerD + " Z";
 				}
 
 				function lastNonNull(series, key) {
@@ -277,7 +365,7 @@ window.__ModuleLoader__.load({
 					return d.getTime();
 				}
 
-				/** 每个 range 的建议 tick 间隔（分钟）。 */
+				/** 每个 range 的建议 tick 间隔（分钟）。越长越稀疏 → overview 感。 */
 				const TICK_INTERVALS = {
 					1: 15,
 					3: 30,
@@ -311,7 +399,7 @@ window.__ModuleLoader__.load({
 						while (t <= endMs) {
 							const h = new Date(t).getHours();
 							if (stepHours <= 1 || h % stepHours === 0) {
-								result.push({ ms: t, label: needDate ? fmtMMdd(t) + " " + fmtHHmm(t) : fmtHHmm(t) });
+								result.push({ ms: t });
 							}
 							t += 3600000;
 						}
@@ -319,20 +407,34 @@ window.__ModuleLoader__.load({
 						t = snapMinute(startMs, intervalMin);
 						if (t < startMs) t += intervalMs;
 						while (t <= endMs) {
-							result.push({ ms: t, label: fmtHHmm(t) });
+							result.push({ ms: t });
 							t += intervalMs;
 						}
 					}
 					// 首尾保底：确保第一个和最后一个 tick 存在
 					if (result.length === 0) {
-						result.push({ ms: startMs, label: needDate ? fmtMMdd(startMs) + " " + fmtHHmm(startMs) : fmtHHmm(startMs) });
-						result.push({ ms: endMs, label: needDate ? fmtMMdd(endMs) + " " + fmtHHmm(endMs) : fmtHHmm(endMs) });
+						result.push({ ms: startMs });
+						result.push({ ms: endMs });
 					} else {
 						if (result[0].ms > startMs + (endMs - startMs) * 0.2) {
-							result.unshift({ ms: startMs, label: needDate ? fmtMMdd(startMs) + " " + fmtHHmm(startMs) : fmtHHmm(startMs) });
+							result.unshift({ ms: startMs });
 						}
 						if (result[result.length - 1].ms < endMs - (endMs - startMs) * 0.2) {
-							result.push({ ms: endMs, label: needDate ? fmtMMdd(endMs) + " " + fmtHHmm(endMs) : fmtHHmm(endMs) });
+							result.push({ ms: endMs });
+						}
+					}
+					// 刻度文字保持克制：默认只写 HH:mm；跨日/长窗口时仅在首刻度和
+					// 自然午夜锚定日期，其余用短标签——长窗口下不会互相拥挤。
+					for (let i = 0; i < result.length; i++) {
+						const ms = result[i].ms;
+						if (!needDate) {
+							result[i].label = fmtHHmm(ms);
+							continue;
+						}
+						if (new Date(ms).getHours() === 0) {
+							result[i].label = fmtMMdd(ms);
+						} else {
+							result[i].label = i === 0 ? fmtMMdd(ms) + " " + fmtHHmm(ms) : fmtHHmm(ms);
 						}
 					}
 					return result;
@@ -341,7 +443,7 @@ window.__ModuleLoader__.load({
 
 				/**
 				 * 纯函数：从时间序列 + 固定时间窗口算出 SVG 几何。
-				 * 现在 x 轴由 windowStart→windowEnd 决定，点按真实 timestamp 定位。
+				 * x 轴由 windowStart→windowEnd 决定，点按真实 timestamp 定位。
 				 *
 				 * @param {Array} series - 时间序列数据
 				 * @param {number} width
@@ -355,25 +457,26 @@ window.__ModuleLoader__.load({
 					const startMs = timeWindow && Number.isFinite(timeWindow.startMs) ? timeWindow.startMs : 0;
 					const endMs = timeWindow && Number.isFinite(timeWindow.endMs) ? timeWindow.endMs : 1;
 					const hours = timeWindow && Number.isFinite(timeWindow.hours) ? timeWindow.hours : 1;
+					const params = chartParams(hours);
 					// X 轴刻度：基于 window，不依赖数据
 					const rawTicks = generateWindowTicks({ startMs, endMs, hours });
 					const xTicks = rawTicks.map(function (tick) {
 						return { ms: tick.ms, label: tick.label, x: scaleTimeX(tick.ms, startMs, endMs, area).toFixed(1) };
 					});
-					// Y 轴网格
+					// Y 轴网格（随 padded domain 一并下移）
 					const yGrid = [0, 50, 100].map(function (v) {
-						return { value: v, y: scaleY(v, area).toFixed(1), label: String(v) };
+						return { value: v, y: scaleY(v, area, params.topPad, params.botPad).toFixed(1), label: String(v) };
 					});
 					if (!Array.isArray(series) || series.length === 0) {
-						return { viewBox: `0 0 ${w} ${h}`, width: w, height: h, empty: true, mel: null, rri: null, gap: null, xTicks: xTicks, yGrid: yGrid, current: [], hoverData: [] };
+						return { viewBox: `0 0 ${w} ${h}`, width: w, height: h, empty: true, mel: null, rri: null, gap: null, xTicks: xTicks, yGrid: yGrid, current: [], hoverData: [], style: params };
 					}
 					// 按真实 timestamp 定位每个点
 					const coords = series.map(function (point) {
 						const ms = timeMs(point.time);
 						return {
 							x: scaleTimeX(ms, startMs, endMs, area),
-							melY: scaleY(normalizeTo100(point.mel != null ? point.mel / 2 : null, MEL_MAX / 2), area),
-							rriY: scaleY(normalizeTo100(point.rri, RRI_MAX), area),
+							melY: scaleY(normalizeTo100(point.mel != null ? point.mel / 2 : null, MEL_MAX / 2), area, params.topPad, params.botPad),
+							rriY: scaleY(normalizeTo100(point.rri, RRI_MAX), area, params.topPad, params.botPad),
 							mel: point.mel,
 							rri: point.rri,
 							time: point.time,
@@ -381,9 +484,10 @@ window.__ModuleLoader__.load({
 							summary: point.summary ?? "",
 						};
 					});
-					const melPath = polylinePath(coords.map(function (c) { return { x: c.x, y: c.melY }; }));
-					const rriPath = polylinePath(coords.map(function (c) { return { x: c.x, y: c.rriY }; }));
-					// Gap area: normalized MEL/2 vs RRI
+					// 顺滑曲线（单调三次样条，不 overshoot）
+					const melPath = smoothPath(coords.map(function (c) { return { x: c.x, y: c.melY }; }));
+					const rriPath = smoothPath(coords.map(function (c) { return { x: c.x, y: c.rriY }; }));
+					// Gap area: normalized MEL/2 vs RRI（同样顺滑闭合）
 					var gapPath = "";
 					if (coords.length >= 2) {
 						var lastBothKnown = false;
@@ -392,12 +496,12 @@ window.__ModuleLoader__.load({
 							var both = coords[i].melY != null && coords[i].rriY != null;
 							if (both && !lastBothKnown) segStart = i;
 							if (!both && lastBothKnown && segStart >= 0) {
-								gapPath += buildGapSegment(coords, segStart, i);
+								gapPath += buildGapSegment(coords, segStart, i, params);
 								segStart = -1;
 							}
 							lastBothKnown = both;
 						}
-						if (lastBothKnown && segStart >= 0) gapPath += buildGapSegment(coords, segStart, coords.length);
+						if (lastBothKnown && segStart >= 0) gapPath += buildGapSegment(coords, segStart, coords.length, params);
 					}
 					// 当前值端点（最后一个非空值）
 					var melLast = lastNonNull(series, "mel");
@@ -408,7 +512,7 @@ window.__ModuleLoader__.load({
 						current.push({
 							label: "MEL", value: melLast.value,
 							normalized: Math.round(melLast.value / 2),
-							x: scaleTimeX(melMs, startMs, endMs, area), y: scaleY(normalizeTo100(melLast.value / 2, MEL_MAX / 2), area),
+							x: scaleTimeX(melMs, startMs, endMs, area), y: scaleY(normalizeTo100(melLast.value / 2, MEL_MAX / 2), area, params.topPad, params.botPad),
 							color: MEL_COLOR,
 						});
 					}
@@ -417,7 +521,7 @@ window.__ModuleLoader__.load({
 						current.push({
 							label: "RRI", value: rriLast.value,
 							normalized: rriLast.value,
-							x: scaleTimeX(rriMs, startMs, endMs, area), y: scaleY(normalizeTo100(rriLast.value, RRI_MAX), area),
+							x: scaleTimeX(rriMs, startMs, endMs, area), y: scaleY(normalizeTo100(rriLast.value, RRI_MAX), area, params.topPad, params.botPad),
 							color: RRI_COLOR,
 						});
 					}
@@ -449,6 +553,7 @@ window.__ModuleLoader__.load({
 						yGrid: yGrid,
 						current: current,
 						hoverData: hoverData,
+						style: params,
 					};
 				}
 
@@ -517,15 +622,18 @@ window.__ModuleLoader__.load({
 					secondaryHint: { fontSize: "9px", color: "var(--dsw-alias-label-caption)" },
 
 					// ── Chart Section ──
-					chartWrap: { padding: "12px 16px", borderBottom: "1px solid var(--dsw-alias-border-l2)", flex: "none", position: "relative" },
-					chartHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", fontSize: "11px", color: "var(--dsw-alias-label-tertiary)" },
-					chartRange: { fontSize: "10px", color: "var(--dsw-alias-label-caption)", letterSpacing: "0.02em" },
-					chartLegend: { display: "flex", gap: "12px", fontSize: "11px" },
-					legendItem: { display: "inline-flex", alignItems: "center", gap: "5px" },
-					legendDot: { width: "7px", height: "7px", borderRadius: "50%", flex: "none" },
-					legendLabel: { color: "var(--dsw-alias-label-tertiary)", fontSize: "10px", letterSpacing: "0.02em" },
-					legendValue: { color: "var(--dsw-alias-label-secondary)", fontVariantNumeric: "tabular-nums", fontWeight: 500, fontSize: "11px" },
-					chartSvg: { display: "block", width: "100%", height: "auto", cursor: "crosshair" },
+					chartWrap: { padding: "14px 16px 16px", borderBottom: "1px solid var(--dsw-alias-border-l2)", flex: "none", position: "relative" },
+					chartHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", fontSize: "11px", color: "var(--dsw-alias-label-tertiary)" },
+					chartEyebrow: { fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--dsw-alias-label-caption)", opacity: 0.85, display: "block", marginBottom: "3px" },
+					chartRange: { fontSize: "10px", color: "var(--dsw-alias-label-caption)", letterSpacing: "0.03em", fontVariantNumeric: "tabular-nums" },
+					// 内层观察卡片：图表本身的 surface，与周围区块有克制但明确的层次差
+					chartCard: { background: "var(--dsw-alias-fill-tsp-secondary, rgba(255,255,255,0.018))", borderRadius: "10px", border: "1px solid var(--dsw-alias-border-l2)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)", padding: "16px 14px 12px", position: "relative" },
+					chartLegend: { display: "flex", gap: "14px", fontSize: "11px" },
+					legendItem: { display: "inline-flex", alignItems: "center", gap: "6px" },
+					legendDot: { width: "5px", height: "5px", borderRadius: "50%", flex: "none" },
+					legendLabel: { color: "var(--dsw-alias-label-caption)", fontSize: "9.5px", letterSpacing: "0.04em" },
+					legendValue: { color: "var(--dsw-alias-label-secondary)", fontVariantNumeric: "tabular-nums", fontWeight: 500, fontSize: "10.5px" },
+					chartSvg: { display: "block", width: "100%", height: "auto", cursor: "crosshair", overflow: "visible" },
 					chartEmpty: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "4px", padding: "24px 16px", textAlign: "center" },
 					chartEmptyText: { fontSize: "11px", color: "var(--dsw-alias-label-caption)" },
 
@@ -539,12 +647,12 @@ window.__ModuleLoader__.load({
 					rangeOptionHover: { background: "var(--dsw-alias-interactive-bg-hover)" },
 
 					// ── Tooltip (floating, positioned by JS) ──
-					tooltip: { position: "absolute", pointerEvents: "none", background: "var(--dsw-alias-bg-elevated, rgba(20,20,28,0.95))", border: "1px solid var(--dsw-alias-border-l2)", borderRadius: "6px", padding: "8px 10px", fontSize: "10px", lineHeight: 1.5, zIndex: 10, minWidth: "120px", boxShadow: "0 4px 12px rgba(0,0,0,0.3)", fontVariantNumeric: "tabular-nums", transition: "opacity 0.1s ease" },
-					tooltipTime: { fontSize: "11px", fontWeight: 600, color: "var(--dsw-alias-label-primary)", marginBottom: "4px", letterSpacing: "0.01em" },
-					tooltipRow: { display: "flex", justifyContent: "space-between", gap: "12px", color: "var(--dsw-alias-label-secondary)" },
-					tooltipLabel: { color: "var(--dsw-alias-label-tertiary)" },
-					tooltipVal: { fontWeight: 500 },
-					tooltipDivider: { height: "1px", background: "var(--dsw-alias-border-l2)", margin: "4px 0" },
+					tooltip: { position: "absolute", pointerEvents: "none", background: "color-mix(in srgb, var(--dsw-alias-bg-elevated, rgba(20,20,28,0.96)) 88%, transparent)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", border: "1px solid var(--dsw-alias-border-l2)", borderRadius: "7px", padding: "7px 9px", fontSize: "10px", lineHeight: 1.5, zIndex: 10, minWidth: "118px", boxShadow: "0 6px 18px rgba(0,0,0,0.34)", fontVariantNumeric: "tabular-nums", transition: "opacity 0.1s ease" },
+					tooltipTime: { fontSize: "11px", fontWeight: 600, color: "var(--dsw-alias-label-primary)", marginBottom: "5px", letterSpacing: "0.01em", fontVariantNumeric: "tabular-nums" },
+					tooltipRow: { display: "flex", justifyContent: "space-between", gap: "14px", color: "var(--dsw-alias-label-secondary)" },
+					tooltipLabel: { color: "var(--dsw-alias-label-caption)" },
+					tooltipVal: { fontWeight: 500, color: "var(--dsw-alias-label-primary)" },
+					tooltipDivider: { height: "1px", background: "var(--dsw-alias-border-l2)", margin: "5px 0" },
 
 					// ── Today Strip ──
 					todayStrip: { padding: "8px 16px", borderBottom: "1px solid var(--dsw-alias-border-l2)", flex: "none", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "11px" },
@@ -728,7 +836,7 @@ window.__ModuleLoader__.load({
 
 					// 从 dashboard metadata 构建 timeWindow
 					var timeWindow = makeTimeWindow(dashboard.hours, dashboard.generatedAt);
-					var chart = buildChartPaths(dashboard.series, 300, 160, timeWindow);
+					var chart = buildChartPaths(dashboard.series, 300, 176, timeWindow);
 					var normGap = dashboard.normalizedGap;
 					var lastTime = dashboard.today.lastEventTime;
 					var lastClock = lastTime ? localClock(lastTime) : null;
@@ -765,18 +873,21 @@ window.__ModuleLoader__.load({
 							ref: chartWrapRef,
 							children: [
 								(0, react_jsx_runtime.jsxs)("div", { style: S.chartHeader, children: [
-									(0, react_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }, children: [
-										(0, react_jsx_runtime.jsxs)("span", { style: S.chartRange, children: ["Last ", selectedHours, "h", dashboard.seriesTruncated ? " · " + dashboard.seriesReturned + " obs" : dashboard.series.length > 0 ? " · " + dashboard.series.length + " obs" : ""] }),
-										(0, react_jsx_runtime.jsxs)("div", { style: S.chartLegend, children: [
-											(0, react_jsx_runtime.jsxs)("span", { style: S.legendItem, children: [
-												(0, react_jsx_runtime.jsx)("span", { style: { ...S.legendDot, background: MEL_COLOR } }),
-												(0, react_jsx_runtime.jsx)("span", { style: S.legendLabel, children: "MEL" }),
-												chart.mel ? (0, react_jsx_runtime.jsx)("span", { style: S.legendValue, children: chart.mel.last ?? "—" }) : null,
-											] }),
-											(0, react_jsx_runtime.jsxs)("span", { style: S.legendItem, children: [
-												(0, react_jsx_runtime.jsx)("span", { style: { ...S.legendDot, background: RRI_COLOR } }),
-												(0, react_jsx_runtime.jsx)("span", { style: S.legendLabel, children: "RRI" }),
-												chart.rri ? (0, react_jsx_runtime.jsx)("span", { style: S.legendValue, children: chart.rri.last ?? "—" }) : null,
+									(0, react_jsx_runtime.jsxs)("div", { style: { display: "flex", flexDirection: "column", gap: "3px", minWidth: 0 }, children: [
+										(0, react_jsx_runtime.jsx)("span", { style: S.chartEyebrow, children: "ENERGY ↔ REALITY" }),
+										(0, react_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }, children: [
+											(0, react_jsx_runtime.jsxs)("span", { style: S.chartRange, children: ["Last ", selectedHours, "h", dashboard.seriesTruncated ? " · " + dashboard.seriesReturned + " obs" : dashboard.series.length > 0 ? " · " + dashboard.series.length + " obs" : ""] }),
+											(0, react_jsx_runtime.jsxs)("div", { style: S.chartLegend, children: [
+												(0, react_jsx_runtime.jsxs)("span", { style: S.legendItem, children: [
+													(0, react_jsx_runtime.jsx)("span", { style: { ...S.legendDot, background: MEL_COLOR } }),
+													(0, react_jsx_runtime.jsx)("span", { style: S.legendLabel, children: "MEL" }),
+													chart.mel ? (0, react_jsx_runtime.jsx)("span", { style: S.legendValue, children: chart.mel.last ?? "—" }) : null,
+												] }),
+												(0, react_jsx_runtime.jsxs)("span", { style: S.legendItem, children: [
+													(0, react_jsx_runtime.jsx)("span", { style: { ...S.legendDot, background: RRI_COLOR } }),
+													(0, react_jsx_runtime.jsx)("span", { style: S.legendLabel, children: "RRI" }),
+													chart.rri ? (0, react_jsx_runtime.jsx)("span", { style: S.legendValue, children: chart.rri.last ?? "—" }) : null,
+												] }),
 											] }),
 										] }),
 									] }),
@@ -801,7 +912,7 @@ window.__ModuleLoader__.load({
 										}) }) : null,
 									] }),
 								] }),
-								chart.empty ? (0, react_jsx_runtime.jsxs)("div", { children: [
+								(0, react_jsx_runtime.jsx)("div", { style: S.chartCard, children: chart.empty ? (0, react_jsx_runtime.jsxs)("div", { children: [
 									(0, react_jsx_runtime.jsx)(MelRriChart, {
 										chart: chart,
 										hoverIndex: chartHover ? chartHover.index : null,
@@ -816,8 +927,8 @@ window.__ModuleLoader__.load({
 										onHover: setChartHover,
 										onLeave: function () { setChartHover(null); },
 									}),
-									chartHover ? (0, react_jsx_runtime.jsx)(ChartTooltip, { hover: chartHover, chart: chart, containerRef: chartWrapRef }) : null,
-								] }),
+								] }) }),
+								chartHover && !chart.empty ? (0, react_jsx_runtime.jsx)(ChartTooltip, { hover: chartHover, chart: chart, containerRef: chartWrapRef }) : null,
 							],
 						}),
 						// ── Today Strip ──
@@ -941,30 +1052,33 @@ window.__ModuleLoader__.load({
 						onMouseMove: handleMouseMove,
 						onMouseLeave: onLeave,
 						children: [
-							// Y 轴网格
+							// 水平网格（更淡，像空间参考而非框架）
 							chart.yGrid.map(function (g) {
 								return (0, react_jsx_runtime.jsxs)(react.Fragment, { children: [
-									(0, react_jsx_runtime.jsx)("line", { x1: CHART_PAD.left, x2: chart.width - CHART_PAD.right, y1: g.y, y2: g.y, stroke: GRID_COLOR, strokeWidth: "0.5" }),
-									(0, react_jsx_runtime.jsx)("text", { x: CHART_PAD.left - 4, y: Number(g.y) + 3, fill: TICK_COLOR, fontSize: "8", textAnchor: "end", fontVariantNumeric: "tabular-nums", children: g.label }),
+									(0, react_jsx_runtime.jsx)("line", { x1: CHART_PAD.left, x2: chart.width - CHART_PAD.right, y1: g.y, y2: g.y, stroke: GRID_COLOR, strokeWidth: "0.5", strokeOpacity: String(chart.style.gridHOpacity), vectorEffect: "non-scaling-stroke" }),
+									(0, react_jsx_runtime.jsx)("text", { x: CHART_PAD.left - 5, y: Number(g.y) + 3, fill: TICK_COLOR, fontSize: "8", fillOpacity: 0.6, textAnchor: "end", fontVariantNumeric: "tabular-nums", children: g.label }),
 								] }, "y" + g.value);
 							}),
-							// Gap area fill
-							chart.gap ? (0, react_jsx_runtime.jsx)("path", { d: chart.gap.path, fill: GAP_FILL, fillOpacity: 0.06, stroke: "none" }) : null,
-							// Lines
-							chart.mel ? (0, react_jsx_runtime.jsx)("path", { d: chart.mel.path, fill: "none", stroke: chart.mel.color, strokeWidth: "1.5", strokeLinejoin: "round", strokeLinecap: "round" }) : null,
-							chart.rri ? (0, react_jsx_runtime.jsx)("path", { d: chart.rri.path, fill: "none", stroke: chart.rri.color, strokeWidth: "1.5", strokeLinejoin: "round", strokeLinecap: "round" }) : null,
-							// X 轴刻度
+							// Gap area fill（极淡，仅暗示两线之间关系）
+							chart.gap ? (0, react_jsx_runtime.jsx)("path", { d: chart.gap.path, fill: GAP_FILL, fillOpacity: chart.style.areaOpacity, stroke: "none" }) : null,
+							// 柔光底层（暗色下让线条有存在感而不刺眼）
+							chart.mel ? (0, react_jsx_runtime.jsx)("path", { d: chart.mel.path, fill: "none", stroke: chart.mel.color, strokeWidth: String(chart.style.glowWidth), strokeOpacity: String(chart.style.glowOpacity), strokeLinejoin: "round", strokeLinecap: "round", pointerEvents: "none" }) : null,
+							chart.rri ? (0, react_jsx_runtime.jsx)("path", { d: chart.rri.path, fill: "none", stroke: chart.rri.color, strokeWidth: String(chart.style.glowWidth), strokeOpacity: String(chart.style.glowOpacity), strokeLinejoin: "round", strokeLinecap: "round", pointerEvents: "none" }) : null,
+							// 核心线条（明显变细、变顺、变轻）
+							chart.mel ? (0, react_jsx_runtime.jsx)("path", { d: chart.mel.path, fill: "none", stroke: chart.mel.color, strokeWidth: String(chart.style.strokeWidth), strokeOpacity: "0.95", strokeLinejoin: "round", strokeLinecap: "round", shapeRendering: "geometricPrecision" }) : null,
+							chart.rri ? (0, react_jsx_runtime.jsx)("path", { d: chart.rri.path, fill: "none", stroke: chart.rri.color, strokeWidth: String(chart.style.strokeWidth), strokeOpacity: "0.95", strokeLinejoin: "round", strokeLinecap: "round", shapeRendering: "geometricPrecision" }) : null,
+							// 垂直网格（更克制，更像呼吸参考）
 							chart.xTicks.map(function (tick) {
 								return (0, react_jsx_runtime.jsxs)(react.Fragment, { children: [
-									(0, react_jsx_runtime.jsx)("line", { x1: tick.x, x2: tick.x, y1: CHART_PAD.top, y2: chart.height - CHART_PAD.bottom, stroke: GRID_COLOR, strokeWidth: "0.5" }),
-									(0, react_jsx_runtime.jsx)("text", { x: tick.x, y: chart.height - 8, fill: TICK_COLOR, fontSize: "8", textAnchor: "middle", fontVariantNumeric: "tabular-nums", children: tick.label }),
+									(0, react_jsx_runtime.jsx)("line", { x1: tick.x, x2: tick.x, y1: CHART_PAD.top, y2: chart.height - CHART_PAD.bottom, stroke: GRID_V_COLOR, strokeWidth: "0.5", strokeOpacity: String(chart.style.gridVOpacity), vectorEffect: "non-scaling-stroke" }),
+									(0, react_jsx_runtime.jsx)("text", { x: tick.x, y: chart.height - 9, fill: TICK_COLOR, fontSize: "8", fillOpacity: 0.6, textAnchor: "middle", fontVariantNumeric: "tabular-nums", children: tick.label }),
 								] }, "x" + tick.x);
 							}),
-							// Current value endpoints
+							// 当前值端点（latest point 微妙强调，但仍是配角）
 							chart.current.map(function (dot) {
 								return (0, react_jsx_runtime.jsxs)(react.Fragment, { children: [
-									(0, react_jsx_runtime.jsx)("circle", { cx: dot.x.toFixed(1), cy: dot.y.toFixed(1), r: "4", fill: "var(--dsw-alias-bg-base, #111)", stroke: dot.color, strokeWidth: "1.5" }),
-									(0, react_jsx_runtime.jsx)("circle", { cx: dot.x.toFixed(1), cy: dot.y.toFixed(1), r: "2", fill: dot.color }),
+									(0, react_jsx_runtime.jsx)("circle", { cx: dot.x.toFixed(1), cy: dot.y.toFixed(1), r: String(chart.style.endpointOuter), fill: "var(--dsw-alias-bg-base, #111)", stroke: dot.color, strokeWidth: "1.5", strokeOpacity: 0.5 }),
+									(0, react_jsx_runtime.jsx)("circle", { cx: dot.x.toFixed(1), cy: dot.y.toFixed(1), r: String(chart.style.endpointInner), fill: dot.color }),
 								] }, "ep-" + dot.label);
 							}),
 							// Crosshair
@@ -975,13 +1089,14 @@ window.__ModuleLoader__.load({
 								y2: chart.height - CHART_PAD.bottom,
 								stroke: CROSSHAIR_COLOR,
 								strokeWidth: "0.5",
+								strokeOpacity: "0.5",
 								strokeDasharray: "3 2",
 								pointerEvents: "none",
 							}) : null,
 							// Hover dots
 							hoverIndex != null && chart.hoverData && chart.hoverData[hoverIndex] ? (0, react_jsx_runtime.jsxs)(react.Fragment, { children: [
-								chart.hoverData[hoverIndex].melY != null ? (0, react_jsx_runtime.jsx)("circle", { cx: chart.hoverData[hoverIndex].x, cy: chart.hoverData[hoverIndex].melY, r: "3", fill: MEL_COLOR, stroke: "var(--dsw-alias-bg-base, #111)", strokeWidth: "1", pointerEvents: "none" }) : null,
-								chart.hoverData[hoverIndex].rriY != null ? (0, react_jsx_runtime.jsx)("circle", { cx: chart.hoverData[hoverIndex].x, cy: chart.hoverData[hoverIndex].rriY, r: "3", fill: RRI_COLOR, stroke: "var(--dsw-alias-bg-base, #111)", strokeWidth: "1", pointerEvents: "none" }) : null,
+								chart.hoverData[hoverIndex].melY != null ? (0, react_jsx_runtime.jsx)("circle", { cx: chart.hoverData[hoverIndex].x, cy: chart.hoverData[hoverIndex].melY, r: String(chart.style.hoverR), fill: MEL_COLOR, stroke: "var(--dsw-alias-bg-base, #111)", strokeWidth: "1", pointerEvents: "none" }) : null,
+								chart.hoverData[hoverIndex].rriY != null ? (0, react_jsx_runtime.jsx)("circle", { cx: chart.hoverData[hoverIndex].x, cy: chart.hoverData[hoverIndex].rriY, r: String(chart.style.hoverR), fill: RRI_COLOR, stroke: "var(--dsw-alias-bg-base, #111)", strokeWidth: "1", pointerEvents: "none" }) : null,
 							] }) : null,
 						],
 					});
@@ -1438,6 +1553,8 @@ window.__ModuleLoader__.load({
 					buildChartPaths,
 					generateWindowTicks: typeof generateWindowTicks === "function" ? generateWindowTicks : null,
 					scaleTimeX: typeof scaleTimeX === "function" ? scaleTimeX : null,
+					smoothPath: typeof smoothPath === "function" ? smoothPath : null,
+					chartParams: typeof chartParams === "function" ? chartParams : null,
 					linePath: typeof polylinePath === "function" ? polylinePath : null,
 					chartGeometry: typeof buildChartPaths === "function" ? buildChartPaths : null,
 					localClock,

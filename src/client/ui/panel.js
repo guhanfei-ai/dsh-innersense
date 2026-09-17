@@ -127,7 +127,7 @@
 
 					// 从 dashboard metadata 构建 timeWindow
 					var timeWindow = makeTimeWindow(dashboard.hours, dashboard.generatedAt);
-					var chart = buildChartPaths(dashboard.series, 300, 160, timeWindow);
+					var chart = buildChartPaths(dashboard.series, 300, 176, timeWindow);
 					var normGap = dashboard.normalizedGap;
 					var lastTime = dashboard.today.lastEventTime;
 					var lastClock = lastTime ? localClock(lastTime) : null;
@@ -164,18 +164,21 @@
 							ref: chartWrapRef,
 							children: [
 								(0, react_jsx_runtime.jsxs)("div", { style: S.chartHeader, children: [
-									(0, react_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }, children: [
-										(0, react_jsx_runtime.jsxs)("span", { style: S.chartRange, children: ["Last ", selectedHours, "h", dashboard.seriesTruncated ? " · " + dashboard.seriesReturned + " obs" : dashboard.series.length > 0 ? " · " + dashboard.series.length + " obs" : ""] }),
-										(0, react_jsx_runtime.jsxs)("div", { style: S.chartLegend, children: [
-											(0, react_jsx_runtime.jsxs)("span", { style: S.legendItem, children: [
-												(0, react_jsx_runtime.jsx)("span", { style: { ...S.legendDot, background: MEL_COLOR } }),
-												(0, react_jsx_runtime.jsx)("span", { style: S.legendLabel, children: "MEL" }),
-												chart.mel ? (0, react_jsx_runtime.jsx)("span", { style: S.legendValue, children: chart.mel.last ?? "—" }) : null,
-											] }),
-											(0, react_jsx_runtime.jsxs)("span", { style: S.legendItem, children: [
-												(0, react_jsx_runtime.jsx)("span", { style: { ...S.legendDot, background: RRI_COLOR } }),
-												(0, react_jsx_runtime.jsx)("span", { style: S.legendLabel, children: "RRI" }),
-												chart.rri ? (0, react_jsx_runtime.jsx)("span", { style: S.legendValue, children: chart.rri.last ?? "—" }) : null,
+									(0, react_jsx_runtime.jsxs)("div", { style: { display: "flex", flexDirection: "column", gap: "3px", minWidth: 0 }, children: [
+										(0, react_jsx_runtime.jsx)("span", { style: S.chartEyebrow, children: "ENERGY ↔ REALITY" }),
+										(0, react_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }, children: [
+											(0, react_jsx_runtime.jsxs)("span", { style: S.chartRange, children: ["Last ", selectedHours, "h", dashboard.seriesTruncated ? " · " + dashboard.seriesReturned + " obs" : dashboard.series.length > 0 ? " · " + dashboard.series.length + " obs" : ""] }),
+											(0, react_jsx_runtime.jsxs)("div", { style: S.chartLegend, children: [
+												(0, react_jsx_runtime.jsxs)("span", { style: S.legendItem, children: [
+													(0, react_jsx_runtime.jsx)("span", { style: { ...S.legendDot, background: MEL_COLOR } }),
+													(0, react_jsx_runtime.jsx)("span", { style: S.legendLabel, children: "MEL" }),
+													chart.mel ? (0, react_jsx_runtime.jsx)("span", { style: S.legendValue, children: chart.mel.last ?? "—" }) : null,
+												] }),
+												(0, react_jsx_runtime.jsxs)("span", { style: S.legendItem, children: [
+													(0, react_jsx_runtime.jsx)("span", { style: { ...S.legendDot, background: RRI_COLOR } }),
+													(0, react_jsx_runtime.jsx)("span", { style: S.legendLabel, children: "RRI" }),
+													chart.rri ? (0, react_jsx_runtime.jsx)("span", { style: S.legendValue, children: chart.rri.last ?? "—" }) : null,
+												] }),
 											] }),
 										] }),
 									] }),
@@ -200,7 +203,7 @@
 										}) }) : null,
 									] }),
 								] }),
-								chart.empty ? (0, react_jsx_runtime.jsxs)("div", { children: [
+								(0, react_jsx_runtime.jsx)("div", { style: S.chartCard, children: chart.empty ? (0, react_jsx_runtime.jsxs)("div", { children: [
 									(0, react_jsx_runtime.jsx)(MelRriChart, {
 										chart: chart,
 										hoverIndex: chartHover ? chartHover.index : null,
@@ -215,8 +218,8 @@
 										onHover: setChartHover,
 										onLeave: function () { setChartHover(null); },
 									}),
-									chartHover ? (0, react_jsx_runtime.jsx)(ChartTooltip, { hover: chartHover, chart: chart, containerRef: chartWrapRef }) : null,
-								] }),
+								] }) }),
+								chartHover && !chart.empty ? (0, react_jsx_runtime.jsx)(ChartTooltip, { hover: chartHover, chart: chart, containerRef: chartWrapRef }) : null,
 							],
 						}),
 						// ── Today Strip ──
@@ -340,30 +343,33 @@
 						onMouseMove: handleMouseMove,
 						onMouseLeave: onLeave,
 						children: [
-							// Y 轴网格
+							// 水平网格（更淡，像空间参考而非框架）
 							chart.yGrid.map(function (g) {
 								return (0, react_jsx_runtime.jsxs)(react.Fragment, { children: [
-									(0, react_jsx_runtime.jsx)("line", { x1: CHART_PAD.left, x2: chart.width - CHART_PAD.right, y1: g.y, y2: g.y, stroke: GRID_COLOR, strokeWidth: "0.5" }),
-									(0, react_jsx_runtime.jsx)("text", { x: CHART_PAD.left - 4, y: Number(g.y) + 3, fill: TICK_COLOR, fontSize: "8", textAnchor: "end", fontVariantNumeric: "tabular-nums", children: g.label }),
+									(0, react_jsx_runtime.jsx)("line", { x1: CHART_PAD.left, x2: chart.width - CHART_PAD.right, y1: g.y, y2: g.y, stroke: GRID_COLOR, strokeWidth: "0.5", strokeOpacity: String(chart.style.gridHOpacity), vectorEffect: "non-scaling-stroke" }),
+									(0, react_jsx_runtime.jsx)("text", { x: CHART_PAD.left - 5, y: Number(g.y) + 3, fill: TICK_COLOR, fontSize: "8", fillOpacity: 0.6, textAnchor: "end", fontVariantNumeric: "tabular-nums", children: g.label }),
 								] }, "y" + g.value);
 							}),
-							// Gap area fill
-							chart.gap ? (0, react_jsx_runtime.jsx)("path", { d: chart.gap.path, fill: GAP_FILL, fillOpacity: 0.06, stroke: "none" }) : null,
-							// Lines
-							chart.mel ? (0, react_jsx_runtime.jsx)("path", { d: chart.mel.path, fill: "none", stroke: chart.mel.color, strokeWidth: "1.5", strokeLinejoin: "round", strokeLinecap: "round" }) : null,
-							chart.rri ? (0, react_jsx_runtime.jsx)("path", { d: chart.rri.path, fill: "none", stroke: chart.rri.color, strokeWidth: "1.5", strokeLinejoin: "round", strokeLinecap: "round" }) : null,
-							// X 轴刻度
+							// Gap area fill（极淡，仅暗示两线之间关系）
+							chart.gap ? (0, react_jsx_runtime.jsx)("path", { d: chart.gap.path, fill: GAP_FILL, fillOpacity: chart.style.areaOpacity, stroke: "none" }) : null,
+							// 柔光底层（暗色下让线条有存在感而不刺眼）
+							chart.mel ? (0, react_jsx_runtime.jsx)("path", { d: chart.mel.path, fill: "none", stroke: chart.mel.color, strokeWidth: String(chart.style.glowWidth), strokeOpacity: String(chart.style.glowOpacity), strokeLinejoin: "round", strokeLinecap: "round", pointerEvents: "none" }) : null,
+							chart.rri ? (0, react_jsx_runtime.jsx)("path", { d: chart.rri.path, fill: "none", stroke: chart.rri.color, strokeWidth: String(chart.style.glowWidth), strokeOpacity: String(chart.style.glowOpacity), strokeLinejoin: "round", strokeLinecap: "round", pointerEvents: "none" }) : null,
+							// 核心线条（明显变细、变顺、变轻）
+							chart.mel ? (0, react_jsx_runtime.jsx)("path", { d: chart.mel.path, fill: "none", stroke: chart.mel.color, strokeWidth: String(chart.style.strokeWidth), strokeOpacity: "0.95", strokeLinejoin: "round", strokeLinecap: "round", shapeRendering: "geometricPrecision" }) : null,
+							chart.rri ? (0, react_jsx_runtime.jsx)("path", { d: chart.rri.path, fill: "none", stroke: chart.rri.color, strokeWidth: String(chart.style.strokeWidth), strokeOpacity: "0.95", strokeLinejoin: "round", strokeLinecap: "round", shapeRendering: "geometricPrecision" }) : null,
+							// 垂直网格（更克制，更像呼吸参考）
 							chart.xTicks.map(function (tick) {
 								return (0, react_jsx_runtime.jsxs)(react.Fragment, { children: [
-									(0, react_jsx_runtime.jsx)("line", { x1: tick.x, x2: tick.x, y1: CHART_PAD.top, y2: chart.height - CHART_PAD.bottom, stroke: GRID_COLOR, strokeWidth: "0.5" }),
-									(0, react_jsx_runtime.jsx)("text", { x: tick.x, y: chart.height - 8, fill: TICK_COLOR, fontSize: "8", textAnchor: "middle", fontVariantNumeric: "tabular-nums", children: tick.label }),
+									(0, react_jsx_runtime.jsx)("line", { x1: tick.x, x2: tick.x, y1: CHART_PAD.top, y2: chart.height - CHART_PAD.bottom, stroke: GRID_V_COLOR, strokeWidth: "0.5", strokeOpacity: String(chart.style.gridVOpacity), vectorEffect: "non-scaling-stroke" }),
+									(0, react_jsx_runtime.jsx)("text", { x: tick.x, y: chart.height - 9, fill: TICK_COLOR, fontSize: "8", fillOpacity: 0.6, textAnchor: "middle", fontVariantNumeric: "tabular-nums", children: tick.label }),
 								] }, "x" + tick.x);
 							}),
-							// Current value endpoints
+							// 当前值端点（latest point 微妙强调，但仍是配角）
 							chart.current.map(function (dot) {
 								return (0, react_jsx_runtime.jsxs)(react.Fragment, { children: [
-									(0, react_jsx_runtime.jsx)("circle", { cx: dot.x.toFixed(1), cy: dot.y.toFixed(1), r: "4", fill: "var(--dsw-alias-bg-base, #111)", stroke: dot.color, strokeWidth: "1.5" }),
-									(0, react_jsx_runtime.jsx)("circle", { cx: dot.x.toFixed(1), cy: dot.y.toFixed(1), r: "2", fill: dot.color }),
+									(0, react_jsx_runtime.jsx)("circle", { cx: dot.x.toFixed(1), cy: dot.y.toFixed(1), r: String(chart.style.endpointOuter), fill: "var(--dsw-alias-bg-base, #111)", stroke: dot.color, strokeWidth: "1.5", strokeOpacity: 0.5 }),
+									(0, react_jsx_runtime.jsx)("circle", { cx: dot.x.toFixed(1), cy: dot.y.toFixed(1), r: String(chart.style.endpointInner), fill: dot.color }),
 								] }, "ep-" + dot.label);
 							}),
 							// Crosshair
@@ -374,13 +380,14 @@
 								y2: chart.height - CHART_PAD.bottom,
 								stroke: CROSSHAIR_COLOR,
 								strokeWidth: "0.5",
+								strokeOpacity: "0.5",
 								strokeDasharray: "3 2",
 								pointerEvents: "none",
 							}) : null,
 							// Hover dots
 							hoverIndex != null && chart.hoverData && chart.hoverData[hoverIndex] ? (0, react_jsx_runtime.jsxs)(react.Fragment, { children: [
-								chart.hoverData[hoverIndex].melY != null ? (0, react_jsx_runtime.jsx)("circle", { cx: chart.hoverData[hoverIndex].x, cy: chart.hoverData[hoverIndex].melY, r: "3", fill: MEL_COLOR, stroke: "var(--dsw-alias-bg-base, #111)", strokeWidth: "1", pointerEvents: "none" }) : null,
-								chart.hoverData[hoverIndex].rriY != null ? (0, react_jsx_runtime.jsx)("circle", { cx: chart.hoverData[hoverIndex].x, cy: chart.hoverData[hoverIndex].rriY, r: "3", fill: RRI_COLOR, stroke: "var(--dsw-alias-bg-base, #111)", strokeWidth: "1", pointerEvents: "none" }) : null,
+								chart.hoverData[hoverIndex].melY != null ? (0, react_jsx_runtime.jsx)("circle", { cx: chart.hoverData[hoverIndex].x, cy: chart.hoverData[hoverIndex].melY, r: String(chart.style.hoverR), fill: MEL_COLOR, stroke: "var(--dsw-alias-bg-base, #111)", strokeWidth: "1", pointerEvents: "none" }) : null,
+								chart.hoverData[hoverIndex].rriY != null ? (0, react_jsx_runtime.jsx)("circle", { cx: chart.hoverData[hoverIndex].x, cy: chart.hoverData[hoverIndex].rriY, r: String(chart.style.hoverR), fill: RRI_COLOR, stroke: "var(--dsw-alias-bg-base, #111)", strokeWidth: "1", pointerEvents: "none" }) : null,
 							] }) : null,
 						],
 					});

@@ -242,6 +242,8 @@
 					buildChartPaths,
 					generateWindowTicks: typeof generateWindowTicks === "function" ? generateWindowTicks : null,
 					scaleTimeX: typeof scaleTimeX === "function" ? scaleTimeX : null,
+					smoothPath: typeof smoothPath === "function" ? smoothPath : null,
+					chartParams: typeof chartParams === "function" ? chartParams : null,
 					linePath: typeof polylinePath === "function" ? polylinePath : null,
 					chartGeometry: typeof buildChartPaths === "function" ? buildChartPaths : null,
 					localClock,
