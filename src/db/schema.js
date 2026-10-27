@@ -69,7 +69,7 @@ export function migrate(db) {
   }
   if (from > SCHEMA_VERSION) {
     throw new Error(
-      `introspect database schema is newer (v${from}) than this plugin supports (v${SCHEMA_VERSION}); upgrade dsh-introspect instead of downgrading the database.`,
+      `introspect database schema is newer (v${from}) than this plugin supports (v${SCHEMA_VERSION}); upgrade dsh-innersense instead of downgrading the database.`,
     )
   }
   return { from, to: Math.max(from, SCHEMA_VERSION), applied }

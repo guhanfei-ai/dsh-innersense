@@ -1,5 +1,5 @@
 // Generated source fragment. Edit this file, then run npm run build:client.
-// dsh-introspect —— 浏览器半边（ModuleLoader 单文件模块，零外部依赖）。
+// dsh-innersense —— 浏览器半边（ModuleLoader 单文件模块，零外部依赖）。
 //
 // 职责：
 // - 「MEL」按钮：挂 conversation.session.header.actions（list 槽），点击切换右侧
@@ -10,7 +10,7 @@
 // - 只读数据面：所有面板数据经 host 自建只读路由 /introspect/api/dashboard 取得。
 //   客户端永远不直接写 SQLite（一切写入都经 DSH 模型调工具）。
 window.__ModuleLoader__.load({
-  id: "dsh-introspect",
+  id: "dsh-innersense",
   factory: (require) => {
     var module = { exports: {} };
     var exports = module.exports;

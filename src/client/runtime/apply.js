@@ -143,8 +143,8 @@
 							const svc = ctx2 && ctx2.betterSidebar;
 							if (!svc || typeof svc.registerTab !== "function") return;
 							const dispose = svc.registerTab({
-								id: "dsh-introspect:introspect",
-								title: () => "MEL",
+								id: "dsh-innersense:introspect",
+								title: () => "向内感知",
 								icon: (size) => (0, react_jsx_runtime.jsx)("svg", {
 									width: size, height: size, viewBox: "0 0 14 14", fill: "none", stroke: "currentColor", strokeWidth: 1.4, strokeLinecap: "round", strokeLinejoin: "round",
 									children: [
@@ -207,7 +207,7 @@
 
 				ctx.slots.inject("conversation.session.header.actions", () => ctx.slots.register({
 					name: "conversation.session.header.actions",
-					id: "dsh-introspect",
+					id: "dsh-innersense",
 					order: 110,
 					inject: () => ({ introspectFace: face }),
 				}, IntrospectSlot));

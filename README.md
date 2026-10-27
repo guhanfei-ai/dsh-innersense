@@ -1,4 +1,9 @@
-# dsh-introspect
+# dsh-innersense
+
+> [!NOTE]
+> 🧪 **Experimental.** An early prototype from the [guhanfei-ai](https://github.com/guhanfei-ai) lab: the idea is serious, the code is a first cut. There is no stable release yet; APIs, data formats and behavior may change without notice, so it is not recommended for production. Ideas and issues are welcome.
+
+**InnerSense** — interoception for DeepSeek Harness. [dsh-worldsense](https://github.com/guhanfei-ai/dsh-worldsense) senses the world outside; InnerSense senses you.
 
 Local-first self-observability for DeepSeek Harness.
 
@@ -20,16 +25,22 @@ Records real events into a local SQLite database and projects them onto five obs
 | **ARCTIC** | Did this move me toward where I want to go? | -10..+10 |
 | **TSA** | How much finite time did this consume? | minutes, nullable |
 
-The right-side Introspect panel shows all five, a **MEL × RRI** time series, and recent events.
+The right-side InnerSense panel shows all five, a **MEL × RRI** time series, and recent events.
 
-**Why MEL × RRI?** High internal energy does not necessarily imply high external progress. dsh-introspect deliberately keeps mental energy and reality feedback as separate dimensions so you can see when they diverge.
+**Why MEL × RRI?** High internal energy does not necessarily imply high external progress. InnerSense deliberately keeps mental energy and reality feedback as separate dimensions so you can see when they diverge.
 
 ---
 
 ## Install
 
 ```bash
-dsh plugin --profile web add link:/path/to/dsh-introspect
+dsh plugin --profile web add dsh-innersense
+```
+
+Or from a local checkout:
+
+```bash
+dsh plugin --profile web add link:/path/to/dsh-innersense
 ```
 
 Or from a published tag:

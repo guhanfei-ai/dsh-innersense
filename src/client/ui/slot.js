@@ -6,7 +6,7 @@
 			function openIntrospectTab(svc, scope) {
 				if (!svc || typeof svc.openTab !== "function") return;
 				try {
-					svc.openTab({ type: "dsh-introspect:introspect", url: "dsh-introspect://introspect" }, scope);
+					svc.openTab({ type: "dsh-innersense:introspect", url: "dsh-innersense://introspect" }, scope);
 				} catch { /* BS 已卸载或方法缺失 */ }
 			}
 
@@ -53,7 +53,7 @@
 
 				if (sidebarMode) {
 					return (0, react_jsx_runtime.jsx)(react.Fragment, { children: (0, react_jsx_runtime.jsxs)("button", {
-						type: "button", title: "Introspect: open / close", style: S.mButton,
+						type: "button", title: "向内感知：打开 / 关闭", style: S.mButton,
 						onClick: () => openIntrospectTab(sidebar, { sessionId }),
 						children: [buttonIcon, "MEL"],
 					}) });
@@ -61,7 +61,7 @@
 
 				return (0, react_jsx_runtime.jsxs)(react.Fragment, { children: [
 					(0, react_jsx_runtime.jsxs)("button", {
-						type: "button", title: "Introspect: open / close", style: S.mButton,
+						type: "button", title: "向内感知：打开 / 关闭", style: S.mButton,
 						onClick: () => setOpen((v) => !v),
 						children: [buttonIcon, "MEL"],
 					}),

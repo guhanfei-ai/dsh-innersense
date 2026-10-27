@@ -4,7 +4,7 @@
 >
 > **Observe. Do not judge.**
 
-dsh-introspect projects every recorded event onto five observation axes. The model assigns values at record time; the plugin stores, validates, aggregates and displays them. Scores can be re-derived from the raw text at any time — the raw event is always preserved.
+dsh-innersense projects every recorded event onto five observation axes. The model assigns values at record time; the plugin stores, validates, aggregates and displays them. Scores can be re-derived from the raw text at any time — the raw event is always preserved.
 
 ---
 

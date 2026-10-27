@@ -1,4 +1,4 @@
-// dsh-introspect —— 浏览器半边（ModuleLoader 单文件模块，零外部依赖）。
+// dsh-innersense —— 浏览器半边（ModuleLoader 单文件模块，零外部依赖）。
 //
 // 职责：
 // - 「MEL」按钮：挂 conversation.session.header.actions（list 槽），点击切换右侧
@@ -9,7 +9,7 @@
 // - 只读数据面：所有面板数据经 host 自建只读路由 /introspect/api/dashboard 取得。
 //   客户端永远不直接写 SQLite（一切写入都经 DSH 模型调工具）。
 window.__ModuleLoader__.load({
-  id: "dsh-introspect",
+  id: "dsh-innersense",
   factory: (require) => {
     var module = { exports: {} };
     var exports = module.exports;
@@ -1191,7 +1191,7 @@ window.__ModuleLoader__.load({
 			function openIntrospectTab(svc, scope) {
 				if (!svc || typeof svc.openTab !== "function") return;
 				try {
-					svc.openTab({ type: "dsh-introspect:introspect", url: "dsh-introspect://introspect" }, scope);
+					svc.openTab({ type: "dsh-innersense:introspect", url: "dsh-innersense://introspect" }, scope);
 				} catch { /* BS 已卸载或方法缺失 */ }
 			}
 
@@ -1238,7 +1238,7 @@ window.__ModuleLoader__.load({
 
 				if (sidebarMode) {
 					return (0, react_jsx_runtime.jsx)(react.Fragment, { children: (0, react_jsx_runtime.jsxs)("button", {
-						type: "button", title: "Introspect: open / close", style: S.mButton,
+						type: "button", title: "向内感知：打开 / 关闭", style: S.mButton,
 						onClick: () => openIntrospectTab(sidebar, { sessionId }),
 						children: [buttonIcon, "MEL"],
 					}) });
@@ -1246,7 +1246,7 @@ window.__ModuleLoader__.load({
 
 				return (0, react_jsx_runtime.jsxs)(react.Fragment, { children: [
 					(0, react_jsx_runtime.jsxs)("button", {
-						type: "button", title: "Introspect: open / close", style: S.mButton,
+						type: "button", title: "向内感知：打开 / 关闭", style: S.mButton,
 						onClick: () => setOpen((v) => !v),
 						children: [buttonIcon, "MEL"],
 					}),
@@ -1439,8 +1439,8 @@ window.__ModuleLoader__.load({
 							const svc = ctx2 && ctx2.betterSidebar;
 							if (!svc || typeof svc.registerTab !== "function") return;
 							const dispose = svc.registerTab({
-								id: "dsh-introspect:introspect",
-								title: () => "MEL",
+								id: "dsh-innersense:introspect",
+								title: () => "向内感知",
 								icon: (size) => (0, react_jsx_runtime.jsx)("svg", {
 									width: size, height: size, viewBox: "0 0 14 14", fill: "none", stroke: "currentColor", strokeWidth: 1.4, strokeLinecap: "round", strokeLinejoin: "round",
 									children: [
@@ -1503,7 +1503,7 @@ window.__ModuleLoader__.load({
 
 				ctx.slots.inject("conversation.session.header.actions", () => ctx.slots.register({
 					name: "conversation.session.header.actions",
-					id: "dsh-introspect",
+					id: "dsh-innersense",
 					order: 110,
 					inject: () => ({ introspectFace: face }),
 				}, IntrospectSlot));

@@ -1,4 +1,9 @@
-# dsh-introspect
+# dsh-innersense
+
+> [!NOTE]
+> 🧪 **实验阶段。** 这是 [古寒飞AI](https://github.com/guhanfei-ai) 实验室里的早期原型：想法是认真的，代码还是第一版。目前没有稳定版本，接口、数据格式和行为都可能随时调整，不建议用于生产环境。欢迎提 issue 聊想法。
+
+**InnerSense（向内感知）**：DeepSeek Harness 的内感受（interoception）插件。[dsh-worldsense](https://github.com/guhanfei-ai/dsh-worldsense) 向外感知世界，InnerSense 向内感知你自己。
 
 DeepSeek Harness 中的本地个人可观测系统。
 
@@ -20,16 +25,22 @@ DeepSeek Harness 中的本地个人可观测系统。
 | **ARCTIC** | 这让我离想去的地方更近还是更远？ | -10..+10 |
 | **TSA** | 这消耗了多少有限时间？ | 分钟，可空 |
 
-右侧「内观」面板同时显示全部五个指标、一条 **MEL × RRI** 时间曲线和最近事件。
+右侧「向内感知」面板同时显示全部五个指标、一条 **MEL × RRI** 时间曲线和最近事件。
 
-**为什么要同时看 MEL 和 RRI？** 内在能量高，并不自动意味着现实推进程度高。dsh-introspect 将心智能量与现实反馈作为两个独立维度观察，让两条线的差距自己说话。
+**为什么要同时看 MEL 和 RRI？** 内在能量高，并不自动意味着现实推进程度高。InnerSense 将心智能量与现实反馈作为两个独立维度观察，让两条线的差距自己说话。
 
 ---
 
 ## 安装
 
 ```bash
-dsh plugin --profile web add link:/path/to/dsh-introspect
+dsh plugin --profile web add dsh-innersense
+```
+
+或从本地目录：
+
+```bash
+dsh plugin --profile web add link:/path/to/dsh-innersense
 ```
 
 或发布 tag：

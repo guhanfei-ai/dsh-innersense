@@ -13,7 +13,7 @@ function loadClient() {
   }
   const context = vm.createContext({ URL, window, document: undefined, localStorage: undefined, fetch: undefined })
   vm.runInContext(readFileSync(new URL('../client.js', import.meta.url), 'utf8'), context)
-  assert.equal(definition.id, 'dsh-introspect')
+  assert.equal(definition.id, 'dsh-innersense')
   const runtime = definition.factory((id) => {
     if (id === 'react/jsx-runtime') return {
       jsx(type, props, key) { return { type, props: props || {}, key } },
@@ -57,7 +57,7 @@ const {
   INTROSPECT_TOOLS,
 } = runtime.internals
 
-test('ModuleLoader entry loads with the expected id', () => assert.equal(loadClient().definition.id, 'dsh-introspect'))
+test('ModuleLoader entry loads with the expected id', () => assert.equal(loadClient().definition.id, 'dsh-innersense'))
 
 test('apply and internals are exported', () => {
   assert.equal(typeof loadClient().runtime.apply, 'function')

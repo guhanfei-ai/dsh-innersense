@@ -1,14 +1,14 @@
 {
-  "name": "dsh-introspect",
+  "name": "dsh-innersense",
   "version": "0.1.0",
-  "description": "Local-first self-observability for DeepSeek Harness: record real events, project them onto five observation axes (MEL/ROI/ARCTIC/TSA/RRI), store them in local SQLite, and watch MEL x RRI on a right-side panel.",
+  "description": "InnerSense — local-first interoception (self-observability) for DeepSeek Harness: record real events, project them onto five observation axes (MEL/ROI/ARCTIC/TSA/RRI), store them in local SQLite, and watch MEL x RRI on a right-side panel.",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/guhanfei-ai/dsh-introspect.git"
+    "url": "git+https://github.com/guhanfei-ai/dsh-innersense.git"
   },
-  "homepage": "https://github.com/guhanfei-ai/dsh-introspect#readme",
+  "homepage": "https://github.com/guhanfei-ai/dsh-innersense#readme",
   "bugs": {
-    "url": "https://github.com/guhanfei-ai/dsh-introspect/issues"
+    "url": "https://github.com/guhanfei-ai/dsh-innersense/issues"
   },
   "publishConfig": {
     "access": "public"
@@ -72,6 +72,8 @@
     "harness",
     "dsh",
     "dsh-plugin",
+    "innersense",
+    "interoception",
     "introspect",
     "self-observability",
     "telemetry",

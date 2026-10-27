@@ -1,4 +1,4 @@
-// dsh-introspect —— host 半边：本地个人可观测系统。
+// dsh-innersense —— host 半边：本地个人可观测系统。
 //
 // 分层：
 //   src/metrics.js      五个观察维度的量纲、取值域、校验（唯一真源）
@@ -89,7 +89,7 @@ export function apply(ctx, config = {}) {
           trimForList,
         }),
       }),
-    'dsh-introspect: /introspect/api routes',
+    'dsh-innersense: /introspect/api routes',
   )
 }
 

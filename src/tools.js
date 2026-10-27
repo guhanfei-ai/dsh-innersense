@@ -430,7 +430,7 @@ export function deleteApprovalReason(args) {
   return `Delete introspect event ${label} from the local SQLite store permanently? Its raw text goes with it and this plugin cannot recover it.`
 }
 
-export const GUIDANCE = `## Introspection (dsh-introspect)
+export const GUIDANCE = `## Introspection (dsh-innersense)
 
 Personal self-observability, local-first: real events go into a local SQLite database, five observation axes are projected from them, and the right-side Introspect panel shows what is happening. Observe, do not judge.
 

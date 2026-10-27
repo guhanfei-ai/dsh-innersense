@@ -25,3 +25,11 @@ runtime.log
 .DS_Store
 .npm-cache/
 docs
+# AI 协作入口只留本地，不进 Git
+AGENTS.md
+# 发布产物、发布日志与本地 AI 发布执行器
+dist/
+output/
+/deploy_agent.sh
+# 编辑器 / AI 工具的本地工作目录
+.workbuddy/

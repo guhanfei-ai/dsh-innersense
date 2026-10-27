@@ -2,7 +2,7 @@
 
 ## What this plugin does
 
-dsh-introspect stores personal event telemetry in a local SQLite database on your machine. The database file is at:
+dsh-innersense stores personal event telemetry in a local SQLite database on your machine. The database file is at:
 
 ```
 $DSH_HOME/introspect/events.sqlite3
@@ -24,7 +24,7 @@ If the DeepSeek Harness session is using a remote AI provider (e.g., DeepSeek AP
 
 **Correct statement:**
 
-> dsh-introspect itself does not upload its local SQLite database or send telemetry to an external service. However, if the DeepSeek Harness session uses a remote AI provider, the conversation content (including event descriptions) may transit that provider's infrastructure.
+> dsh-innersense itself does not upload its local SQLite database or send telemetry to an external service. However, if the DeepSeek Harness session uses a remote AI provider, the conversation content (including event descriptions) may transit that provider's infrastructure.
 
 ## Data location
 

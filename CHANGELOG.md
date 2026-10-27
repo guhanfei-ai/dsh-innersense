@@ -2,6 +2,8 @@
 
 ## 0.1.0 (2026-09-17)
 
+> 2026-10-27: renamed from `dsh-introspect` to `dsh-innersense` before the first npm release (the npm name `dsh-introspect` belongs to an unrelated package). Only the package, repository and display names changed; the `introspect` plugin id, the `introspect_*` tools, the `/introspect/api` routes and the data at `$DSH_HOME/introspect/` are unchanged.
+
 Initial release.
 
 **Features:**
