@@ -6,7 +6,7 @@
 				 * 每次变化就重新拉一次（零通道、无轮询）。
 				 */
 				function IntrospectWorkspace(props) {
-					const { sessionId, introspectFace: face, nodesVersion, visible, onAutoOpen, headerHeight, variant } = props;
+					const { sessionId, introspectFace: face, nodesVersion, visible, headerHeight, variant } = props;
 					const [dashboard, setDashboard] = react.useState(null);
 					const [loading, setLoading] = react.useState(false);
 					const [error, setError] = react.useState(null);
@@ -51,20 +51,19 @@
 						}
 					}, [face, sessionId, selectedHours]);
 
-					// fingerprint 变化时：保留当前 selectedHours
-					react.useEffect(function () {
-						if (!nodesVersion) return;
-						if (seenVersionRef.current === null) {
-							seenVersionRef.current = nodesVersion;
-							if (visible) refresh();
-							return;
-						}
-						if (nodesVersion !== seenVersionRef.current) {
-							seenVersionRef.current = nodesVersion;
-							if (visible) refresh();
-							else if (typeof onAutoOpen === "function") onAutoOpen();
-						}
-					}, [nodesVersion, visible, refresh, onAutoOpen]);
+				// fingerprint 变化时：面板可见才刷新；不可见则等用户手动打开时再拉。
+				react.useEffect(function () {
+					if (!nodesVersion) return;
+					if (seenVersionRef.current === null) {
+						seenVersionRef.current = nodesVersion;
+						if (visible) refresh();
+						return;
+					}
+					if (nodesVersion !== seenVersionRef.current) {
+						seenVersionRef.current = nodesVersion;
+						if (visible) refresh();
+					}
+				}, [nodesVersion, visible, refresh]);
 
 					react.useEffect(function () {
 						if (visible && !dashboard && !loading) refresh();

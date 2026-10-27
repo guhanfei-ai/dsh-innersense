@@ -715,7 +715,7 @@ window.__ModuleLoader__.load({
 				 * 每次变化就重新拉一次（零通道、无轮询）。
 				 */
 				function IntrospectWorkspace(props) {
-					const { sessionId, introspectFace: face, nodesVersion, visible, onAutoOpen, headerHeight, variant } = props;
+					const { sessionId, introspectFace: face, nodesVersion, visible, headerHeight, variant } = props;
 					const [dashboard, setDashboard] = react.useState(null);
 					const [loading, setLoading] = react.useState(false);
 					const [error, setError] = react.useState(null);
@@ -760,20 +760,19 @@ window.__ModuleLoader__.load({
 						}
 					}, [face, sessionId, selectedHours]);
 
-					// fingerprint 变化时：保留当前 selectedHours
-					react.useEffect(function () {
-						if (!nodesVersion) return;
-						if (seenVersionRef.current === null) {
-							seenVersionRef.current = nodesVersion;
-							if (visible) refresh();
-							return;
-						}
-						if (nodesVersion !== seenVersionRef.current) {
-							seenVersionRef.current = nodesVersion;
-							if (visible) refresh();
-							else if (typeof onAutoOpen === "function") onAutoOpen();
-						}
-					}, [nodesVersion, visible, refresh, onAutoOpen]);
+				// fingerprint 变化时：面板可见才刷新；不可见则等用户手动打开时再拉。
+				react.useEffect(function () {
+					if (!nodesVersion) return;
+					if (seenVersionRef.current === null) {
+						seenVersionRef.current = nodesVersion;
+						if (visible) refresh();
+						return;
+					}
+					if (nodesVersion !== seenVersionRef.current) {
+						seenVersionRef.current = nodesVersion;
+						if (visible) refresh();
+					}
+				}, [nodesVersion, visible, refresh]);
 
 					react.useEffect(function () {
 						if (visible && !dashboard && !loading) refresh();
@@ -1226,19 +1225,7 @@ window.__ModuleLoader__.load({
 				}, [sidebarMode, sessionId]);
 				react.useEffect(() => { return () => { if (lastSessionRef.current) { sessionStore.delete(lastSessionRef.current); lastSessionRef.current = null; } }; }, []);
 
-				// sidebar 模式 auto-open 兜底：新 introspect_record 到达时拉起 Tab。
-				const sidebarSeen = react.useRef(null);
-				const sidebarInited = react.useRef(false);
-				react.useEffect(() => {
-					if (!sidebarMode || !sessionId) { sidebarInited.current = false; return; }
-					if (!sidebarInited.current) { sidebarInited.current = true; sidebarSeen.current = nodesVersion; return; }
-					if (nodesVersion !== sidebarSeen.current) {
-						sidebarSeen.current = nodesVersion;
-						openIntrospectTab(sidebar, { sessionId });
-					}
-				}, [nodesVersion, sidebarMode, sessionId, sidebar]);
-
-				const [open, setOpen] = react.useState(false);
+			const [open, setOpen] = react.useState(false);
 				const buttonIcon = (0, react_jsx_runtime.jsx)("svg", {
 					width: 14, height: 14, viewBox: "0 0 14 14", fill: "none", stroke: "currentColor", strokeWidth: 1.4, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true",
 					style: { opacity: 0.7, flex: "none" },
@@ -1266,8 +1253,6 @@ window.__ModuleLoader__.load({
 					(0, react_jsx_runtime.jsx)(IntrospectDetailsPanel, {
 						open, sessionId, introspectFace,
 						nodes, nodesVersion, inputActions,
-						onOpen: () => setOpen(true),
-						onClose: () => setOpen(false),
 					}),
 				] });
 			}
@@ -1320,13 +1305,9 @@ window.__ModuleLoader__.load({
 
 				const subscribe = react.useCallback((fn) => sessionStore.subscribe(sessionId, fn), [sessionId]);
 				const getSnapshot = react.useCallback(() => sessionStore.get(sessionId), [sessionId]);
-				const data = react.useSyncExternalStore(subscribe, getSnapshot);
+			const data = react.useSyncExternalStore(subscribe, getSnapshot);
 
-				const onAutoOpen = react.useCallback(() => {
-					openIntrospectTab(ctx && ctx.betterSidebar, scope);
-				}, [ctx, scope]);
-
-				if (!data) {
+			if (!data) {
 					return (0, react_jsx_runtime.jsx)("div", { style: S.loadingWrap, children: "等待会话数据…" });
 				}
 
@@ -1335,7 +1316,6 @@ window.__ModuleLoader__.load({
 					introspectFace: data.introspectFace,
 					nodesVersion: data.nodesVersion,
 					visible,
-					onAutoOpen,
 					headerHeight: null,
 					variant: "sidebar",
 				});
@@ -1346,7 +1326,7 @@ window.__ModuleLoader__.load({
 			 * Better Sidebar 未安装时使用。
 			 */
 			function IntrospectDetailsPanel(props) {
-				const { open, sessionId, introspectFace, nodesVersion, inputActions, onOpen, onClose } = props;
+				const { open, sessionId, introspectFace, nodesVersion, inputActions } = props;
 				const WIDTH_KEY = "dsh-introspect.panel-width";
 				const [panelWidth, setPanelWidth] = react.useState(() => {
 					try {
@@ -1411,8 +1391,6 @@ window.__ModuleLoader__.load({
 								introspectFace,
 								nodesVersion,
 								visible: open,
-								onAutoOpen: onOpen,
-								onClose,
 								headerHeight: 74,
 								variant: "standalone",
 							}),

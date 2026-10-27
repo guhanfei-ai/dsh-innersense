@@ -40,19 +40,7 @@
 				}, [sidebarMode, sessionId]);
 				react.useEffect(() => { return () => { if (lastSessionRef.current) { sessionStore.delete(lastSessionRef.current); lastSessionRef.current = null; } }; }, []);
 
-				// sidebar 模式 auto-open 兜底：新 introspect_record 到达时拉起 Tab。
-				const sidebarSeen = react.useRef(null);
-				const sidebarInited = react.useRef(false);
-				react.useEffect(() => {
-					if (!sidebarMode || !sessionId) { sidebarInited.current = false; return; }
-					if (!sidebarInited.current) { sidebarInited.current = true; sidebarSeen.current = nodesVersion; return; }
-					if (nodesVersion !== sidebarSeen.current) {
-						sidebarSeen.current = nodesVersion;
-						openIntrospectTab(sidebar, { sessionId });
-					}
-				}, [nodesVersion, sidebarMode, sessionId, sidebar]);
-
-				const [open, setOpen] = react.useState(false);
+			const [open, setOpen] = react.useState(false);
 				const buttonIcon = (0, react_jsx_runtime.jsx)("svg", {
 					width: 14, height: 14, viewBox: "0 0 14 14", fill: "none", stroke: "currentColor", strokeWidth: 1.4, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true",
 					style: { opacity: 0.7, flex: "none" },
@@ -80,8 +68,6 @@
 					(0, react_jsx_runtime.jsx)(IntrospectDetailsPanel, {
 						open, sessionId, introspectFace,
 						nodes, nodesVersion, inputActions,
-						onOpen: () => setOpen(true),
-						onClose: () => setOpen(false),
 					}),
 				] });
 			}

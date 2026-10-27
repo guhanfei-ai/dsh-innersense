@@ -9,13 +9,9 @@
 
 				const subscribe = react.useCallback((fn) => sessionStore.subscribe(sessionId, fn), [sessionId]);
 				const getSnapshot = react.useCallback(() => sessionStore.get(sessionId), [sessionId]);
-				const data = react.useSyncExternalStore(subscribe, getSnapshot);
+			const data = react.useSyncExternalStore(subscribe, getSnapshot);
 
-				const onAutoOpen = react.useCallback(() => {
-					openIntrospectTab(ctx && ctx.betterSidebar, scope);
-				}, [ctx, scope]);
-
-				if (!data) {
+			if (!data) {
 					return (0, react_jsx_runtime.jsx)("div", { style: S.loadingWrap, children: "等待会话数据…" });
 				}
 
@@ -24,7 +20,6 @@
 					introspectFace: data.introspectFace,
 					nodesVersion: data.nodesVersion,
 					visible,
-					onAutoOpen,
 					headerHeight: null,
 					variant: "sidebar",
 				});
@@ -35,7 +30,7 @@
 			 * Better Sidebar 未安装时使用。
 			 */
 			function IntrospectDetailsPanel(props) {
-				const { open, sessionId, introspectFace, nodesVersion, inputActions, onOpen, onClose } = props;
+				const { open, sessionId, introspectFace, nodesVersion, inputActions } = props;
 				const WIDTH_KEY = "dsh-introspect.panel-width";
 				const [panelWidth, setPanelWidth] = react.useState(() => {
 					try {
@@ -100,8 +95,6 @@
 								introspectFace,
 								nodesVersion,
 								visible: open,
-								onAutoOpen: onOpen,
-								onClose,
 								headerHeight: 74,
 								variant: "standalone",
 							}),
